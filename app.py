@@ -207,7 +207,7 @@ elif opcion == "📝 Rellenar plantillas":
                 nombre_doc = os.path.join(output_folder, f'{nombre_base}_{plantilla.name}')
                 plantilla_doc.save(nombre_doc)
                 documentos_generados.append(nombre_doc)
-                st.success(f"✅ Generado: {nombre_doc}")
+               # st.success(f"✅ Generado: {nombre_doc}")
 
         # Crear ZIP y mostrar botón de descarga
         import zipfile
@@ -224,7 +224,7 @@ elif opcion == "📝 Rellenar plantillas":
                 mime="application/zip"
             )
 
-        st.info(f"📂 Los documentos generados se han guardado en tu carpeta de Descargas: `{output_folder}`")
+       # st.info(f"📂 Los documentos generados se han guardado en tu carpeta de Descargas: `{output_folder}`")
         st.balloons()
 
 elif opcion == "🧪 Generar plantilla":
