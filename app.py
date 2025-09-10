@@ -184,12 +184,10 @@ elif opcion == "📝 Rellenar plantillas":
 
     if excel_file and plantilla_files:
         df = pd.read_excel(excel_file)
-        # st.write("Columnas detectadas en el Excel:", df.columns.tolist())
-
         output_folder = obtener_ruta_descargas()
-        
-
         os.makedirs(output_folder, exist_ok=True)
+
+        documentos_generados = []
 
         for idx, fila in df.iterrows():
             nombre_base = f'documento_{fila["Nombre"]}_{idx+1}'
@@ -200,19 +198,35 @@ elif opcion == "📝 Rellenar plantillas":
                 for parrafo in plantilla_doc.paragraphs:
                     reemplazar_en_parrafo(parrafo, fila)
 
-                # Reemplazo en tablas (incluye contenido anidado en celdas)
+                # Reemplazo en tablas
                 for table in plantilla_doc.tables:
                     for row in table.rows:
                         for cell in row.cells:
                             reemplazar_en_celda(cell, fila)
 
-
                 nombre_doc = os.path.join(output_folder, f'{nombre_base}_{plantilla.name}')
                 plantilla_doc.save(nombre_doc)
+                documentos_generados.append(nombre_doc)
                 st.success(f"✅ Generado: {nombre_doc}")
+
+        # Crear ZIP y mostrar botón de descarga
+        import zipfile
+        zip_path = "documentos_generados.zip"
+        with zipfile.ZipFile(zip_path, "w") as zipf:
+            for doc_path in documentos_generados:
+                zipf.write(doc_path, arcname=os.path.basename(doc_path))
+
+        with open(zip_path, "rb") as f:
+            st.download_button(
+                label="⬇️ Descargar todos los documentos en ZIP",
+                data=f,
+                file_name="documentos_generados.zip",
+                mime="application/zip"
+            )
 
         st.info(f"📂 Los documentos generados se han guardado en tu carpeta de Descargas: `{output_folder}`")
         st.balloons()
+
 elif opcion == "🧪 Generar plantilla":
     st.title("🧪 Generar plantilla Word desde documento base")
     st.write("Sube un documento Word con campos vacíos (líneas, puntos, etc.) y detectaremos automáticamente los campos para convertirlos en claves rellenables como {{Nombre}}, {{DNI}}, etc.")
