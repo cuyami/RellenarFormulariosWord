@@ -62,15 +62,17 @@ def extraer_campos_streamlit(doc, campo_claves):
     campos_filtrados = {c for c in campos if 2 < len(c) < 60}
     return sorted(campos_filtrados)
 
-def sugerir_sinonimos(nuevo_campo, diccionario):
-    scores = {}
-    for clave in diccionario:
-        score = util.cos_sim(model.encode(nuevo_campo), model.encode(clave))
-        scores[clave] = score.item()
-    sugerido = max(scores, key=scores.get)
-    if scores[sugerido] > 0.8:
-        return sugerido
-    return None
+# def sugerir_sinonimos(campo, diccionario):
+#     scores = {}
+#     for clave in diccionario:
+#         # calcula similitud, por ejemplo con embeddings o alguna métrica
+#         scores[clave] = calcular_similitud(campo, clave)
+
+#     if scores:
+#         return max(scores, key=scores.get)
+#     else:
+#         return campo  # o None, o "" según tu lógica
+
 
 def reemplazar_en_parrafo(parrafo, datos_fila):
     texto_original = "".join(run.text for run in parrafo.runs)
@@ -130,7 +132,7 @@ if opcion == "🔍 Detección de campos":
     st.write("Sube un archivo .docx y detectaremos automáticamente los campos a rellenar. Podrás confirmar, editar y enriquecer el diccionario.")
 
     archivo = st.file_uploader("📤 Sube tu archivo Word", type=["docx"])
-
+    
     if archivo:
         doc = Document(archivo)
         campos_detectados = extraer_campos_streamlit(doc, CAMPO_CLAVES)
@@ -140,17 +142,39 @@ if opcion == "🔍 Detección de campos":
         diccionario_actualizado = False
 
         for campo in campos_detectados:
-            sugerido = sugerir_sinonimos(campo, diccionario)
-            if sugerido and sugerido != campo:
-                st.markdown(f"- **{campo}** (¿Sinónimo de: _{sugerido}_?)")
-                if st.checkbox(f"✅ Confirmar como sinónimo de '{sugerido}'", key=f"sin_{campo}"):
-                    diccionario[sugerido].append(campo)
-                    diccionario_actualizado = True
+            if campo in diccionario:
+                st.markdown(f"- **{campo}** (Ya está en el diccionario)")
             else:
                 st.markdown(f"- **{campo}** (Campo nuevo)")
-                if st.checkbox(f"🆕 Añadir como nuevo campo", key=f"nuevo_{campo}"):
+                if st.checkbox(f"🆕 Añadir al diccionario", key=f"nuevo_{campo}"):
                     diccionario[campo] = []
                     diccionario_actualizado = True
+
+        if diccionario_actualizado:
+            guardar_diccionario(diccionario)
+            st.success("✅ Diccionario actualizado correctamente.")
+
+
+    # if archivo:
+    #     doc = Document(archivo)
+    #     campos_detectados = extraer_campos_streamlit(doc, CAMPO_CLAVES)
+    #     diccionario = cargar_diccionario()
+
+    #     st.subheader("🔍 Revisión de campos detectados:")
+    #     diccionario_actualizado = False
+
+    #     for campo in campos_detectados:
+    #         sugerido = sugerir_sinonimos(campo, diccionario)
+    #         if sugerido and sugerido != campo:
+    #             st.markdown(f"- **{campo}** (¿Sinónimo de: _{sugerido}_?)")
+    #             if st.checkbox(f"✅ Confirmar como sinónimo de '{sugerido}'", key=f"sin_{campo}"):
+    #                 diccionario[sugerido].append(campo)
+    #                 diccionario_actualizado = True
+    #         else:
+    #             st.markdown(f"- **{campo}** (Campo nuevo)")
+    #             if st.checkbox(f"🆕 Añadir como nuevo campo", key=f"nuevo_{campo}"):
+    #                 diccionario[campo] = []
+    #                 diccionario_actualizado = True
 
         if diccionario_actualizado:
             guardar_diccionario(diccionario)
@@ -227,141 +251,141 @@ elif opcion == "📝 Rellenar plantillas":
        # st.info(f"📂 Los documentos generados se han guardado en tu carpeta de Descargas: `{output_folder}`")
         st.balloons()
 
-elif opcion == "🧪 Generar plantilla":
-    st.title("🧪 Generar plantilla Word desde documento base")
-    st.write("Sube un documento Word con campos vacíos (líneas, puntos, etc.) y detectaremos automáticamente los campos para convertirlos en claves rellenables como {{Nombre}}, {{DNI}}, etc.")
+# elif opcion == "🧪 Generar plantilla":
+#     st.title("🧪 Generar plantilla Word desde documento base")
+#     st.write("Sube un documento Word con campos vacíos (líneas, puntos, etc.) y detectaremos automáticamente los campos para convertirlos en claves rellenables como {{Nombre}}, {{DNI}}, etc.")
 
-    archivo_base = st.file_uploader("📤 Sube tu documento base (.docx)", type=["docx"])
-    if archivo_base:
-        doc = Document(archivo_base)
-        campos_detectados = extraer_campos_streamlit(doc, CAMPO_CLAVES)
+#     archivo_base = st.file_uploader("📤 Sube tu documento base (.docx)", type=["docx"])
+#     if archivo_base:
+#         doc = Document(archivo_base)
+#         campos_detectados = extraer_campos_streamlit(doc, CAMPO_CLAVES)
 
-        if campos_detectados:
-            st.subheader("✏️ Edita los nombres de los campos detectados:")
-            campos_personalizados = {}
+#         if campos_detectados:
+#             st.subheader("✏️ Edita los nombres de los campos detectados:")
+#             campos_personalizados = {}
 
-            for campo in campos_detectados:
-                clave_editada = st.text_input(f"Campo detectado: '{campo}' → Clave para plantilla:", value=campo, key=f"edit_{campo}")
-                if clave_editada.strip():
-                    campos_personalizados[campo] = clave_editada.strip()
+#             for campo in campos_detectados:
+#                 clave_editada = st.text_input(f"Campo detectado: '{campo}' → Clave para plantilla:", value=campo, key=f"edit_{campo}")
+#                 if clave_editada.strip():
+#                     campos_personalizados[campo] = clave_editada.strip()
 
-            nombre_plantilla = st.text_input("📝 Nombre para la plantilla (sin extensión)", value="plantilla_generada")
+#             nombre_plantilla = st.text_input("📝 Nombre para la plantilla (sin extensión)", value="plantilla_generada")
 
-            if st.button("📄 Generar plantilla"):
-                # aquí irá la función que genera el documento usando campos_personalizados
+#             if st.button("📄 Generar plantilla"):
+#                 # aquí irá la función que genera el documento usando campos_personalizados
     
             
-                def generar_plantilla_desde_documento(doc, campos_personalizados, ruta_guardar):
-                    for parrafo in doc.paragraphs:
-                        texto_original = "".join(run.text for run in parrafo.runs)
-                        texto_modificado = texto_original
-                        for campo_original, clave_personalizada in campos_personalizados.items():
-                            if campo_original in texto_modificado:
-                                texto_modificado = texto_modificado.replace(campo_original, f'{campo_original}: {{{{{clave_personalizada}}}}}')
-                        if texto_modificado != texto_original:
-                            for run in parrafo.runs:
-                                run.text = ""
-                            if parrafo.runs:
-                                parrafo.runs[0].text = texto_modificado
-                            else:
-                                parrafo.add_run(texto_modificado)
+#                 def generar_plantilla_desde_documento(doc, campos_personalizados, ruta_guardar):
+#                     for parrafo in doc.paragraphs:
+#                         texto_original = "".join(run.text for run in parrafo.runs)
+#                         texto_modificado = texto_original
+#                         for campo_original, clave_personalizada in campos_personalizados.items():
+#                             if campo_original in texto_modificado:
+#                                 texto_modificado = texto_modificado.replace(campo_original, f'{campo_original}: {{{{{clave_personalizada}}}}}')
+#                         if texto_modificado != texto_original:
+#                             for run in parrafo.runs:
+#                                 run.text = ""
+#                             if parrafo.runs:
+#                                 parrafo.runs[0].text = texto_modificado
+#                             else:
+#                                 parrafo.add_run(texto_modificado)
 
-                    for table in doc.tables:
-                        for row in table.rows:
-                            for cell in row.cells:
-                                for p in cell.paragraphs:
-                                    texto_original = "".join(run.text for run in p.runs)
-                                    texto_modificado = texto_original
-                                    for campo_original, clave_personalizada in campos_personalizados.items():
-                                        if campo_original in texto_modificado:
-                                            texto_modificado = texto_modificado.replace(campo_original, f'{campo_original}: {{{{{clave_personalizada}}}}}')
-                                    if texto_modificado != texto_original:
-                                        for run in p.runs:
-                                            run.text = ""
-                                        if p.runs:
-                                            p.runs[0].text = texto_modificado
-                                        else:
-                                            p.add_run(texto_modificado)
+#                     for table in doc.tables:
+#                         for row in table.rows:
+#                             for cell in row.cells:
+#                                 for p in cell.paragraphs:
+#                                     texto_original = "".join(run.text for run in p.runs)
+#                                     texto_modificado = texto_original
+#                                     for campo_original, clave_personalizada in campos_personalizados.items():
+#                                         if campo_original in texto_modificado:
+#                                             texto_modificado = texto_modificado.replace(campo_original, f'{campo_original}: {{{{{clave_personalizada}}}}}')
+#                                     if texto_modificado != texto_original:
+#                                         for run in p.runs:
+#                                             run.text = ""
+#                                         if p.runs:
+#                                             p.runs[0].text = texto_modificado
+#                                         else:
+#                                             p.add_run(texto_modificado)
 
-                    doc.save(ruta_guardar)
+#                     doc.save(ruta_guardar)
 
 
-                carpeta_plantillas = os.path.join(os.path.expanduser("~"), "Downloads", "plantillas_definidas")
-                os.makedirs(carpeta_plantillas, exist_ok=True)
-                ruta_guardar = os.path.join(carpeta_plantillas, f"{nombre_plantilla}.docx")
+#                 carpeta_plantillas = os.path.join(os.path.expanduser("~"), "Downloads", "plantillas_definidas")
+#                 os.makedirs(carpeta_plantillas, exist_ok=True)
+#                 ruta_guardar = os.path.join(carpeta_plantillas, f"{nombre_plantilla}.docx")
 
-                generar_plantilla_desde_documento(doc, campos_personalizados, ruta_guardar)
-                st.success(f"🎉 Plantilla generada y guardada en: `{ruta_guardar}`")
-                st.balloons()
+#                 generar_plantilla_desde_documento(doc, campos_personalizados, ruta_guardar)
+#                 st.success(f"🎉 Plantilla generada y guardada en: `{ruta_guardar}`")
+#                 st.balloons()
 
-elif opcion == "🖱️ Insertar claves manualmente":
-    st.title("🖱️ Inserta claves manualmente en tu documento Word")
-    st.write("Navega por el contenido del documento y selecciona dónde insertar claves como {{Nombre}}, {{DNI}}, etc.")
+# elif opcion == "🖱️ Insertar claves manualmente":
+#     st.title("🖱️ Inserta claves manualmente en tu documento Word")
+#     st.write("Navega por el contenido del documento y selecciona dónde insertar claves como {{Nombre}}, {{DNI}}, etc.")
 
-    archivo_manual = st.file_uploader("📤 Sube tu documento Word (.docx)", type=["docx"])
-    lista_de_claves = ["Nombre", "Apellido1", "DNI", "Empresa", "CIF", "Dirección", "Teléfono", "Email"]  # Puedes ampliar esta lista
+#     archivo_manual = st.file_uploader("📤 Sube tu documento Word (.docx)", type=["docx"])
+#     lista_de_claves = ["Nombre", "Apellido1", "DNI", "Empresa", "CIF", "Dirección", "Teléfono", "Email"]  # Puedes ampliar esta lista
 
-    if archivo_manual:
-        doc = Document(archivo_manual)
-        cambios = []
+#     if archivo_manual:
+#         doc = Document(archivo_manual)
+#         cambios = []
 
-        st.subheader("📄 Párrafos del documento")
-        for i, parrafo in enumerate(doc.paragraphs):
-            st.markdown(f"**Párrafo {i+1}:** {parrafo.text}")
-            if parrafo.text.strip():
-                insertar = st.checkbox(f"📌 Insertar clave en este párrafo", key=f"p_check_{i}")
-                if insertar:
-                    posicion = st.radio("Posición:", ["Inicio", "Final", "Reemplazar"], key=f"p_pos_{i}")
-                    clave = st.selectbox("Selecciona clave:", lista_de_claves, key=f"p_clave_{i}")
-                    cambios.append(("parrafo", i, posicion, clave))
+#         st.subheader("📄 Párrafos del documento")
+#         for i, parrafo in enumerate(doc.paragraphs):
+#             st.markdown(f"**Párrafo {i+1}:** {parrafo.text}")
+#             if parrafo.text.strip():
+#                 insertar = st.checkbox(f"📌 Insertar clave en este párrafo", key=f"p_check_{i}")
+#                 if insertar:
+#                     posicion = st.radio("Posición:", ["Inicio", "Final", "Reemplazar"], key=f"p_pos_{i}")
+#                     clave = st.selectbox("Selecciona clave:", lista_de_claves, key=f"p_clave_{i}")
+#                     cambios.append(("parrafo", i, posicion, clave))
 
-        st.subheader("📊 Celdas en tablas")
-        for t_idx, table in enumerate(doc.tables):
-            for r_idx, row in enumerate(table.rows):
-                for c_idx, cell in enumerate(row.cells):
-                    texto = cell.text.strip()
-                    if texto:
-                        st.markdown(f"**Tabla {t_idx+1}, Fila {r_idx+1}, Celda {c_idx+1}:** {texto}")
-                        insertar = st.checkbox(f"📌 Insertar clave en esta celda", key=f"c_check_{t_idx}_{r_idx}_{c_idx}")
-                        if insertar:
-                            posicion = st.radio("Posición:", ["Inicio", "Final", "Reemplazar"], key=f"c_pos_{t_idx}_{r_idx}_{c_idx}")
-                            clave = st.selectbox("Selecciona clave:", lista_de_claves, key=f"c_clave_{t_idx}_{r_idx}_{c_idx}")
-                            cambios.append(("celda", (t_idx, r_idx, c_idx), posicion, clave))
+#         st.subheader("📊 Celdas en tablas")
+#         for t_idx, table in enumerate(doc.tables):
+#             for r_idx, row in enumerate(table.rows):
+#                 for c_idx, cell in enumerate(row.cells):
+#                     texto = cell.text.strip()
+#                     if texto:
+#                         st.markdown(f"**Tabla {t_idx+1}, Fila {r_idx+1}, Celda {c_idx+1}:** {texto}")
+#                         insertar = st.checkbox(f"📌 Insertar clave en esta celda", key=f"c_check_{t_idx}_{r_idx}_{c_idx}")
+#                         if insertar:
+#                             posicion = st.radio("Posición:", ["Inicio", "Final", "Reemplazar"], key=f"c_pos_{t_idx}_{r_idx}_{c_idx}")
+#                             clave = st.selectbox("Selecciona clave:", lista_de_claves, key=f"c_clave_{t_idx}_{r_idx}_{c_idx}")
+#                             cambios.append(("celda", (t_idx, r_idx, c_idx), posicion, clave))
 
-        if st.button("📄 Generar documento con claves"):
-            for tipo, ubicacion, posicion, clave in cambios:
-                if tipo == "parrafo":
-                    parrafo = doc.paragraphs[ubicacion]
-                    texto = parrafo.text.strip()
-                    if posicion == "Inicio":
-                        nuevo = f'{{{{{clave}}}}} {texto}'
-                    elif posicion == "Final":
-                        nuevo = f'{texto} {{{{{clave}}}}}'
-                    else:
-                        nuevo = f'{{{{{clave}}}}}'
-                    parrafo.clear()
-                    parrafo.add_run(nuevo)
+#         if st.button("📄 Generar documento con claves"):
+#             for tipo, ubicacion, posicion, clave in cambios:
+#                 if tipo == "parrafo":
+#                     parrafo = doc.paragraphs[ubicacion]
+#                     texto = parrafo.text.strip()
+#                     if posicion == "Inicio":
+#                         nuevo = f'{{{{{clave}}}}} {texto}'
+#                     elif posicion == "Final":
+#                         nuevo = f'{texto} {{{{{clave}}}}}'
+#                     else:
+#                         nuevo = f'{{{{{clave}}}}}'
+#                     parrafo.clear()
+#                     parrafo.add_run(nuevo)
 
-                elif tipo == "celda":
-                    t_idx, r_idx, c_idx = ubicacion
-                    cell = doc.tables[t_idx].rows[r_idx].cells[c_idx]
-                    for p in cell.paragraphs:
-                        texto = p.text.strip()
-                        if posicion == "Inicio":
-                            nuevo = f'{{{{{clave}}}}} {texto}'
-                        elif posicion == "Final":
-                            nuevo = f'{texto} {{{{{clave}}}}}'
-                        else:
-                            nuevo = f'{{{{{clave}}}}}'
-                        p.clear()
-                        p.add_run(nuevo)
+#                 elif tipo == "celda":
+#                     t_idx, r_idx, c_idx = ubicacion
+#                     cell = doc.tables[t_idx].rows[r_idx].cells[c_idx]
+#                     for p in cell.paragraphs:
+#                         texto = p.text.strip()
+#                         if posicion == "Inicio":
+#                             nuevo = f'{{{{{clave}}}}} {texto}'
+#                         elif posicion == "Final":
+#                             nuevo = f'{texto} {{{{{clave}}}}}'
+#                         else:
+#                             nuevo = f'{{{{{clave}}}}}'
+#                         p.clear()
+#                         p.add_run(nuevo)
 
-            carpeta_destino = os.path.join(os.path.expanduser("~"), "Downloads", "documentos_editados")
-            os.makedirs(carpeta_destino, exist_ok=True)
-            ruta_guardar = os.path.join(carpeta_destino, "documento_con_claves.docx")
-            doc.save(ruta_guardar)
-            st.success(f"🎉 Documento generado con claves insertadas en: `{ruta_guardar}`")
-    st.sidebar.title("📁 Navegación")
+#             carpeta_destino = os.path.join(os.path.expanduser("~"), "Downloads", "documentos_editados")
+#             os.makedirs(carpeta_destino, exist_ok=True)
+#             ruta_guardar = os.path.join(carpeta_destino, "documento_con_claves.docx")
+#             doc.save(ruta_guardar)
+#             st.success(f"🎉 Documento generado con claves insertadas en: `{ruta_guardar}`")
+#     st.sidebar.title("📁 Navegación")
 
 elif opcion == "📋 Pegado manual de claves":
     st.title("📋 Pegado manual de claves")
